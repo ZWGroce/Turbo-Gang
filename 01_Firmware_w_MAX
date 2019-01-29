@@ -6,11 +6,17 @@
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
 #include "utility/Adafruit_MS_PWMServoDriver.h"
+#include <Adafruit_MAX31856.h>
 
 //Include Device Sepcific Header From Sketch>>Import Library (In This Case LinxArduinoMega2560.h)
 //Also Include Desired LINX Listener From Sketch>>Import Library (In This Case LinxSerialListener.h)
 #include <LinxArduinoMega2560.h>
 #include <LinxSerialListener.h>
+
+// Create objects for each thermocouple using the pin layout below
+// Use software SPI: CS, DI, DO, CLK
+Adafruit_MAX31856 kthermo = Adafruit_MAX31856(6,7,8,9);
+Adafruit_MAX31856 tthermo = Adafruit_MAX31856(2,3,4,5);
 
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();  //Creates an object to utilize the AFMS shield
 //Creates an object to operate the fan (DC motor) connected in slot 2 of the AFMS shield
@@ -26,11 +32,16 @@ Adafruit_StepperMotor *stepper = AFMS.getStepper(200,2);
  setStep = Set point in steps
  del = difference between setStep and stepTrack
  fanSpeed = rotation speed of fan, set in LabVIEW
- lightLevel = Analog input from flame sensor
+ upTemp = Upstream temperature from T-type thermocouple
+ downTemp = Downstream temperature from K-type thermocouple
+ up/downMult = Multiplier value for thermocouple outlet
+ up/downMod = Modulo value for thermocouple outlet
+
+ Thermocouple Value (calculated in LabVIEW = (255 * multiplier) + modulo
  ***********************************************************/
-int timeDelay, stepTrack, del, setStep, fanSpeed, lightLevel;
-float x;
-int photoCellPin = A0;  //Sets analog pin for flame sensor
+int timeDelay, stepTrack, del, setStep, fanSpeed;
+int upMult, upMod, downMult, downMod;
+float x, upTemp, downTemp;
 
 //Create A Pointer To The LINX Device Object We Instantiate In Setup()
 LinxArduinoMega2560* LinxDevice;
@@ -54,6 +65,19 @@ void setup()
   stepper->setSpeed(255);  //Sets the rotation speed of the stepper to 255 (maximum)
   timeDelay = 1;  //Sets the time delay to 1 ms
   stepTrack = 0;
+
+  // Initialize thermocouples
+  tthermo.begin();
+  kthermo.begin();
+  tthermo.setThermocoupleType(MAX31856_TCTYPE_T);
+  kthermo.setThermocoupleType(MAX31856_TCTYPE_K);
+
+  // Set Thermocouple threshold temperatures
+  tthermo.setColdJunctionFaultThreshholds(-100, 100);
+  tthermo.setTempFaultThreshholds(0, 150);
+
+  kthermo.setColdJunctionFaultThreshholds(-100, 100);
+  kthermo.setTempFaultThreshholds(0, 2000);
 }
 
 void loop()
@@ -70,10 +94,8 @@ int customCommand(unsigned char numInputBytes, unsigned char* input, unsigned ch
   x = input[1];  //sets percent valve open to second array value
   stepTrack = input[2];  //sets step tracker to third array value
   
-  *numResponseBytes = 2;  //sets the output to two bytes
-  lightLevel = analogRead(photoCellPin);  //senses the flame sensor value
-  lightLevel = map(lightLevel, 0, 1023, 0, 255);  //maps falme sensor to a value that can be output by the custom command (max value = 255)
-  
+  *numResponseBytes = 5;  //sets the output to two bytes
+    
   x = map(x, 0, 100, 0, 250);  //Maps the percent valve open value to steps
   
   setStep = (int)x;  //Sets setStep to x cast to type int
@@ -91,10 +113,21 @@ int customCommand(unsigned char numInputBytes, unsigned char* input, unsigned ch
   }else{
     stepper->release();  //Removes current from stepper.  Doesn't provide holding torque but also prevents stepper from overheating
   }
- 
+
+  upTemp = tthermo.readThermocoupleTemperature();  //Reads upstream thermocouple and records temp
+  downTemp = kthermo.readThermocoupleTemperature();  //Reads downstream thermocouple and records temp
+
+  upMult = ((int)upTemp) / 255;  //Calculates truncated multiplier of upTemp/255
+  upMod = ((int)upTemp) % 255;  //Calculates the remainder of upTemp/255
+  downMult = ((int)downTemp) / 255;  //Calculates truncated multiplier of downTemp/255
+  downMod = ((int)downTemp) % 255;  //Calculates the remainder of downTemp/255
+  
   fan->setSpeed(fanSpeed*2.5);  //Sets the fan speed to a speed between 0 and 250
   response[0] = stepTrack;  //Sets the first response array value to the step tracker
-  response[1] = lightLevel;  //Sets the second response array value to the light level
+  response[1] = upMult;  //Sets the second response to the upstream temperature multiplier
+  response[2] = upMod;  //Sets the third response to the upstream temperature modulo
+  response[3] = downMult;  //Sets the fourth response to the downstream temperature multiplier
+  response[4] = downMod;  //Sets the fifth response to the downstream temperature modulo
   
   delay(timeDelay);  //Delays the system
   return 0;  //Required value for custom command
