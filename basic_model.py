@@ -1,9 +1,9 @@
-import matplotlib.pyplot as plt
-import numpy as np
-#import tkinter as tk
+# import matplotlib.pyplot as plt
+# import numpy as np
+# import tkinter as tk
 import csv
 from bisect import bisect_left
-from scipy.interpolate import make_interp_spline
+# from scipy.interpolate import make_interp_spline
 
 
 def pcomp(mdotair, speed):
@@ -13,7 +13,8 @@ def pcomp(mdotair, speed):
 
     rot = speed/4241
 
-    with open('cmap.csv', 'r') as readFile:
+    with open("C:/Users/Zachary Groce/Documents/My Documents/School/1c Year/Capstone/Mechanical Engineering Design"
+              "/LabVIEW/Support/cmap.csv", 'r') as readFile:
         reader = csv.reader(readFile)
         lines = list(reader)
         linecount = 0
@@ -69,7 +70,7 @@ def fc_initial(qgen):
         tcell = ((tstep/cpcell)*(qgen - (hht*aht*(tcell - ((tair + tin)/2)))))+tcell
         cpair = (0.1883*tair) + 943.5
         tass = (((hht*aht)-(2*mair*cpair))/(2*mair*cpair*hht*aht))*qgen
-        tdyn =  (((hht*aht*tstep)/cpcell)*(tass-tdyn))+tdyn
+        tdyn = (((hht*aht*tstep)/cpcell)*(tass-tdyn))+tdyn
         tair = tcell + tdyn
 
         time.append(counter)
@@ -79,7 +80,7 @@ def fc_initial(qgen):
     temps = [tcell, tdyn, tair]
     return temps
 
-
+'''
 def plot_data(time, data1, data2, data3, data4):
     times = np.linspace(min(time), max(time), 300)
     # spl = make_interp_spline(times, array, k=5)
@@ -89,14 +90,14 @@ def plot_data(time, data1, data2, data3, data4):
     spl2 = make_interp_spline(time, data2, k=3)
     data2_new = spl2(times)
     plt.plot(times, data2_new, color='red')
-    #plt.grid()
+    # plt.grid()
     plt.title('Shaft Speed')
     plt.ylabel('Shaft Speed [rpm]')
     plt.text(time[-1] - .5, data2[-1] - 1500, int(data2[-1]))
 
     plt.subplot(222)
     plt.plot(time, data4, color='darkorchid')
-    #plt.grid()
+    # plt.grid()
     plt.title('Compressor Work')
     plt.ylabel('Compressor Work [KW]')
     plt.text(time[-1] - .3, data4[-1] - 25, int(data4[-1]))
@@ -105,7 +106,7 @@ def plot_data(time, data1, data2, data3, data4):
     spl1 = make_interp_spline(time, data1, k=3)
     data1_new = spl1(times)
     plt.plot(times, data1_new)
-    #plt.grid()
+    # plt.grid()
     plt.title('Mass Flowrate of Air')
     plt.ylabel('Mass Flowrate [kg/s]')
     plt.xlabel('Time [s]')
@@ -113,12 +114,13 @@ def plot_data(time, data1, data2, data3, data4):
 
     plt.subplot(224)
     plt.plot(time, data3, color='green')
-    #plt.grid()
+    # plt.grid()
     plt.title('Fuel Cell Outlet Air Temperature')
     plt.ylabel('Fuel Cell Outlet\nTemperature [K]')
     plt.xlabel('Time [s]')
     plt.text(time[-1] - .35, data3[-1] + 5, int(data3[-1]))
     plt.show()
+'''
 
 
 def gt_initial(qgen, tatm, speed):
@@ -131,6 +133,7 @@ def gt_initial(qgen, tatm, speed):
     compEff = 0.65
     kair = 1.4
     wcomp = 5
+    tcomp = tatm
     welec = 45
     ival = 0.027
     omega = 2094
@@ -147,12 +150,12 @@ def gt_initial(qgen, tatm, speed):
     hht = 302
     aht = 0.06
 
-    mass_flow = [mair]
+    '''mass_flow = [mair]
     shaft_speed = [(omega*9.550)]
     t_air_out = [tair]
     p_comp = [pratiocomp]
     w_comp = [wcomp]
-    times = [0]
+    times = [0]'''
 
     while counter < 5:
         cpair = ((0.1883 * tair) + 943.5)/1000
@@ -179,39 +182,53 @@ def gt_initial(qgen, tatm, speed):
         tair = tcell + tdyn
 
         counter += tstep
-        mass_flow.append(mair)
+        '''mass_flow.append(mair)
         shaft_speed.append((omega * 9.550))
         t_air_out.append(tair)
         p_comp.append((pratiocomp*100))
         w_comp.append(wcomp)
-        times.append(counter)
+        times.append(counter)'''
 
-    #plot_data(times, mass_flow, shaft_speed, t_air_out, w_comp)
-    print((omega*9.550))
-    #vals = [pratiocomp, tair, mair, omega, tcomp, wcomp, tcell, tdyn]
-    #return vals
+    # plot_data(times, mass_flow, shaft_speed, t_air_out, w_comp)
+    vals = [pratiocomp, tair, mair, omega, tcomp, wcomp, tcell, tdyn]
+    return vals
 
 
-def single_run(qgen, tatm, inputs=None):
-    if inputs is None:
-        inputs = gt_initial(qgen, tatm)
+def single_run(inputs):
+    voltage = 0.7
+
+    if inputs[0] == 0:
+        qgen = inputs[1]
+        tatm = inputs[2]
+        speed = inputs[3]
+        currentDraw = inputs[4]
+        inputs.clear()
+        inputs = gt_initial(qgen, tatm, speed)
         pratiocomp = inputs[0]
         tair = inputs[1]
         mair = inputs[2]
         omega = inputs[3]
-        tcomp = inputs[4]
         wcomp = inputs[5]
         tcell = inputs[6]
         tdyn = inputs[7]
     else:
-        pratiocomp = inputs[0]
-        tair = inputs[1]
-        mair = inputs[2]
-        omega = inputs[3]
-        tcomp = inputs[4]
-        wcomp = inputs[5]
-        tcell = inputs[6]
-        tdyn = inputs[7]
+        tatm = inputs[1]
+        pratiocomp = (inputs[2]/100)
+        tair = inputs[3]
+        mair = inputs[4]
+        omega = inputs[5]
+        wcomp = inputs[6]
+        tcell = inputs[7]
+        tdyn = inputs[8]
+        qgenLast = inputs[9]
+        currentDraw = inputs[10]
+        currentLast = inputs[11]
+
+        if currentDraw != currentLast:
+            qgen = qgenLast + (currentDraw - currentLast) * voltage
+        else:
+            qgen = qgenLast
+
 
     tstep = 0.1
     tstepFC = tstep * 100
@@ -234,7 +251,9 @@ def single_run(qgen, tatm, inputs=None):
     current_speed = (((wtot / ival) * tstep) / omega) + omega
     error = desired_speed - current_speed
     up = kp * error
-    omega = current_speed + up
+    omega = omega + up
+    if omega > 4241:
+        omega = 4241
     mair = 0.000416 * omega
     wcomp = (0.009267 * mair * omega ** 2) / 1000
     pratiocomp = pcomp(mair, omega)
@@ -246,9 +265,24 @@ def single_run(qgen, tatm, inputs=None):
     tdyn = (((hht * aht * tstepFC) / cpcell) * (tass - tdyn)) + tdyn
     tair = tcell + tdyn
 
-    outputs = [pratiocomp, tair, mair, omega, tcomp, wcomp, tcell, tdyn]
+    qgenLast = qgen
+    currentLast = currentDraw
+    outputs = [(pratiocomp*100), tair, mair, omega, tcomp, wcomp, wturb, tcell, tdyn, qgenLast, currentLast]
 
     return outputs
 
 
-gt_initial(150, 288, 40500)
+'''firstinput = [0, 150, 288, 40500, 1500]
+firstoutput = single_run(firstinput)
+firstoutput.insert(0, 1)
+firstoutput.insert(1, 288)
+firstoutput.pop(6)
+firstoutput.pop(7)
+firstoutput.insert(10, 1500)
+print("This is the first output")
+for i in firstoutput:
+    print(i)
+secondoutput = single_run(firstoutput)
+print("This is the second output")
+for i in secondoutput:
+    print(i)'''
